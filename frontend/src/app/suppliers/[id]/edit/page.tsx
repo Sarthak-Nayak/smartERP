@@ -1,0 +1,171 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { apiRequest } from '../../../../lib/api';
+import * as z from 'zod';
+import Link from 'next/link';
+import { ArrowLeft, Save } from 'lucide-react';
+
+const supplierSchema = z.object({
+  name: z.string().min(1, 'Supplier name is required'),
+  contact: z.string().optional().or(z.literal('')),
+  address: z.string().optional().or(z.literal('')),
+  openingBalance: z.coerce.number().min(0, 'Opening balance cannot be negative')
+});
+
+type SupplierFormValues = z.infer<typeof supplierSchema>;
+
+export default function EditSupplierPage() {
+  const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
+
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors }
+  } = useForm<SupplierFormValues>({
+    resolver: zodResolver(supplierSchema) as any
+  });
+
+  useEffect(() => {
+    const fetchSupplier = async () => {
+      try {
+        const data = await apiRequest(`/suppliers/${id}`);
+        const s = data.supplier;
+        setValue('name', s.name);
+        setValue('contact', s.contact || '');
+        setValue('address', s.address || '');
+        setValue('openingBalance', Number(s.openingBalance));
+        setLoading(false);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load supplier details');
+        setLoading(false);
+      }
+    };
+    fetchSupplier();
+  }, [id, setValue]);
+
+  const onSubmit = async (values: SupplierFormValues) => {
+    setSubmitting(true);
+    setError('');
+    try {
+      await apiRequest(`/suppliers/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(values)
+      });
+      router.push('/suppliers');
+    } catch (err: any) {
+      setError(err.message || 'Failed to update supplier ledger.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-20 text-xs text-slate-400">Loading ledger data...</div>;
+  }
+
+  return (
+    <div className="max-w-xl mx-auto space-y-6 font-sans text-xs">
+      {/* Header */}
+      <div className="flex items-center space-x-3 border-b border-slate-800 pb-4">
+        <Link href="/suppliers" className="p-1.5 bg-slate-900 border border-slate-700 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
+        <div>
+          <h1 className="text-xl font-bold text-white tracking-tight">Edit Supplier Ledger</h1>
+          <p className="text-[10px] text-slate-400 mt-1">Modify name, contact info, and opening balance parameters</p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-950/40 border border-red-800 text-red-300 rounded-md p-3">
+          {error}
+        </div>
+      )}
+
+      {/* Form Card */}
+      <div className="card-panel bg-slate-900">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <label className="form-label">Supplier Name *</label>
+            <input
+              type="text"
+              className="form-input"
+              {...register('name')}
+              disabled={submitting}
+            />
+            {errors.name && (
+              <p className="text-rose-450 mt-1 text-[10px]">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="form-label">Contact Info (Phone/Email)</label>
+            <input
+              type="text"
+              className="form-input"
+              {...register('contact')}
+              disabled={submitting}
+            />
+            {errors.contact && (
+              <p className="text-rose-450 mt-1 text-[10px]">{errors.contact.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="form-label">Address</label>
+            <textarea
+              className="form-input min-h-[60px]"
+              {...register('address')}
+              disabled={submitting}
+            />
+            {errors.address && (
+              <p className="text-rose-450 mt-1 text-[10px]">{errors.address.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="form-label">Opening Balance ($)</label>
+            <input
+              type="number"
+              step="0.01"
+              className="form-input font-bold"
+              {...register('openingBalance')}
+              disabled={submitting}
+            />
+            {errors.openingBalance && (
+              <p className="text-rose-450 mt-1 text-[10px]">{errors.openingBalance.message}</p>
+            )}
+          </div>
+
+          <div className="flex space-x-2 pt-2">
+            <Link
+              href="/suppliers"
+              className="w-1/2 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-md transition-colors"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              className="w-1/2 flex items-center justify-center space-x-1.5 bg-indigo-650 hover:bg-indigo-500 text-white font-bold py-2 rounded-md transition-colors cursor-pointer"
+              disabled={submitting}
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{submitting ? 'Saving...' : 'Save Changes'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

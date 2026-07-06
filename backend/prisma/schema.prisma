@@ -1,0 +1,117 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Customer {
+  id               String   @id @default(uuid())
+  name             String
+  mobile           String?
+  address          String?
+  openingBalance   Decimal  @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  salesVouchers    SalesVoucher[]
+  payments         CustomerPayment[]
+}
+
+model Supplier {
+  id               String   @id @default(uuid())
+  name             String
+  contact          String?
+  address          String?
+  openingBalance   Decimal  @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  purchaseVouchers PurchaseVoucher[]
+  payments         SupplierPayment[]
+}
+
+model StockItem {
+  id            String   @id @default(uuid())
+  name          String
+  sku           String   @unique
+  unit          String   // PCS, KG, LTR, BOX, PACK
+  purchaseRate  Decimal
+  sellingRate   Decimal
+  openingStock  Decimal  @default(0)
+  gstPercent    Decimal  @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  saleLines     SalesVoucherLine[]
+  purchaseLines PurchaseVoucherLine[]
+}
+
+model SalesVoucher {
+  id            String   @id @default(uuid())
+  voucherNo     String   @unique
+  date          DateTime @default(now())
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  lines         SalesVoucherLine[]
+  grandTotal    Decimal
+  invoiceNo     String   @unique
+  createdAt     DateTime @default(now())
+}
+
+model SalesVoucherLine {
+  id             String       @id @default(uuid())
+  salesVoucherId String
+  salesVoucher   SalesVoucher @relation(fields: [salesVoucherId], references: [id])
+  stockItemId    String
+  stockItem      StockItem    @relation(fields: [stockItemId], references: [id])
+  quantity       Decimal
+  rate           Decimal
+  lineTotal      Decimal
+}
+
+model PurchaseVoucher {
+  id            String   @id @default(uuid())
+  voucherNo     String   @unique
+  date          DateTime @default(now())
+  supplierId    String
+  supplier      Supplier @relation(fields: [supplierId], references: [id])
+  lines         PurchaseVoucherLine[]
+  grandTotal    Decimal
+  createdAt     DateTime @default(now())
+}
+
+model PurchaseVoucherLine {
+  id                String          @id @default(uuid())
+  purchaseVoucherId String
+  purchaseVoucher   PurchaseVoucher @relation(fields: [purchaseVoucherId], references: [id])
+  stockItemId       String
+  stockItem         StockItem       @relation(fields: [stockItemId], references: [id])
+  quantity          Decimal
+  rate              Decimal
+  lineTotal         Decimal
+}
+
+model CustomerPayment {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  amount     Decimal
+  date       DateTime @default(now())
+  note       String?
+}
+
+model SupplierPayment {
+  id         String   @id @default(uuid())
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+  amount     Decimal
+  date       DateTime @default(now())
+  note       String?
+}
