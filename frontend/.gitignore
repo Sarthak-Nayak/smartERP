@@ -3,6 +3,9 @@
 # dependencies
 /node_modules
 /.pnp
+.env
+.env.local
+backend/src/.env
 .pnp.*
 .yarn/*
 !.yarn/patches
